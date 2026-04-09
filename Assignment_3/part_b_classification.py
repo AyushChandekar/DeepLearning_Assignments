@@ -59,7 +59,11 @@ def inference(model_path=None, source=None):
     if model_path is None:
         model_path = os.path.join(BASE_DIR, "runs", "classify", "weights", "best.pt")
     if source is None:
-        source = os.path.join(DATASET_DIR, "test")
+        # Grab first available class folder since predict doesn't recurse
+        test_dir = os.path.join(DATASET_DIR, "test")
+        subfolders = [os.path.join(test_dir, d) for d in os.listdir(test_dir)
+                      if os.path.isdir(os.path.join(test_dir, d))]
+        source = subfolders[0] if subfolders else test_dir
 
     print("\n" + "=" * 60)
     print("PART B: Image Classification — Inference")
