@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Task YOLO Vision System</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #0f0f23;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a3e, #2d1b69);
+            padding: 30px;
+            text-align: center;
+            border-bottom: 2px solid #6c3fc0;
+        }
+        .header h1 { font-size: 2rem; color: #fff; }
+        .header p { color: #aaa; margin-top: 8px; }
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .task-selector {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        .task-btn {
+            padding: 14px 10px;
+            border: 2px solid #333;
+            border-radius: 10px;
+            background: #1a1a2e;
+            color: #ccc;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        .task-btn:hover { border-color: #6c3fc0; color: #fff; }
+        .task-btn.active {
+            border-color: #8b5cf6;
+            background: #2d1b69;
+            color: #fff;
+        }
+        .task-btn.unavailable {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .task-btn .icon { font-size: 1.5rem; display: block; margin-bottom: 5px; }
+        .upload-area {
+            border: 2px dashed #444;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: border-color 0.2s;
+            cursor: pointer;
+        }
+        .upload-area:hover { border-color: #8b5cf6; }
+        .upload-area.dragover { border-color: #8b5cf6; background: rgba(139, 92, 246, 0.05); }
+        .upload-area input { display: none; }
+        .btn-run {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #6c3fc0, #8b5cf6);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-run:hover { opacity: 0.9; }
+        .btn-run:disabled { opacity: 0.4; cursor: not-allowed; }
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+        .results img {
+            width: 100%;
+            border-radius: 10px;
+            border: 2px solid #333;
+        }
+        .details {
+            background: #1a1a2e;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 15px;
+            font-family: monospace;
+            font-size: 0.95rem;
+            white-space: pre-wrap;
+        }
+        .spinner {
+            display: none;
+            text-align: center;
+            padding: 30px;
+            font-size: 1.1rem;
+            color: #8b5cf6;
+        }
+        .preview-img {
+            max-width: 300px;
+            max-height: 200px;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Multi-Task YOLO Vision System</h1>
+        <p>Object Detection | Classification | Pose Estimation | OBB</p>
+    </div>
+
+    <div class="container">
+        <h3 style="margin-bottom: 12px; color: #aaa;">Select Task:</h3>
+        <div class="task-selector">
+            <div class="task-btn {% if not available.detection %}unavailable{% endif %}"
+                 data-task="detection" onclick="selectTask(this)">
+                <span class="icon">🎯</span> Detection
+            </div>
+            <div class="task-btn {% if not available.classification %}unavailable{% endif %}"
+                 data-task="classification" onclick="selectTask(this)">
+                <span class="icon">🏷️</span> Classification
+            </div>
+            <div class="task-btn {% if not available.pose %}unavailable{% endif %}"
+                 data-task="pose" onclick="selectTask(this)">
+                <span class="icon">🦴</span> Pose
+            </div>
+            <div class="task-btn {% if not available.obb %}unavailable{% endif %}"
+                 data-task="obb" onclick="selectTask(this)">
+                <span class="icon">📐</span> OBB
+            </div>
+        </div>
+
+        <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+            <p style="font-size: 1.1rem;">📁 Click or drag & drop an image here</p>
+            <p style="color: #666; margin-top: 8px;">Supports JPG, PNG, BMP, WEBP</p>
+            <input type="file" id="fileInput" accept="image/*" onchange="handleFile(this)">
+            <img class="preview-img" id="preview" style="display:none;">
+        </div>
+
+        <button class="btn-run" id="runBtn" disabled onclick="runInference()">
+            Run Inference
+        </button>
+
+        <div class="spinner" id="spinner">⏳ Running inference...</div>
+
+        <div class="results" id="results">
+            <h3 style="margin-bottom: 12px;">Results:</h3>
+            <img id="resultImg" src="">
+            <div class="details" id="details"></div>
+        </div>
+    </div>
+
+    <script>
+        let selectedTask = null;
+        let selectedFile = null;
+
+        function selectTask(el) {
+            if (el.classList.contains('unavailable')) return;
+            document.querySelectorAll('.task-btn').forEach(b => b.classList.remove('active'));
+            el.classList.add('active');
+            selectedTask = el.dataset.task;
+            updateBtn();
+        }
+
+        function handleFile(input) {
+            if (input.files.length > 0) {
+                selectedFile = input.files[0];
+                const preview = document.getElementById('preview');
+                preview.src = URL.createObjectURL(selectedFile);
+                preview.style.display = 'block';
+                updateBtn();
+            }
+        }
+
+        function updateBtn() {
+            document.getElementById('runBtn').disabled = !(selectedTask && selectedFile);
+        }
+
+        // Drag and drop
+        const area = document.getElementById('uploadArea');
+        area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('dragover'); });
+        area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+        area.addEventListener('drop', e => {
+            e.preventDefault();
+            area.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                document.getElementById('fileInput').files = e.dataTransfer.files;
+                handleFile(document.getElementById('fileInput'));
+            }
+        });
+
+        async function runInference() {
+            const spinner = document.getElementById('spinner');
+            const results = document.getElementById('results');
+            const btn = document.getElementById('runBtn');
+
+            spinner.style.display = 'block';
+            results.style.display = 'none';
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('task', selectedTask);
+            formData.append('image', selectedFile);
+
+            try {
+                const resp = await fetch('/predict', { method: 'POST', body: formData });
+                const data = await resp.json();
+
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                document.getElementById('resultImg').src = 'data:image/jpeg;base64,' + data.image;
+                document.getElementById('details').textContent = JSON.stringify(data.details, null, 2);
+                results.style.display = 'block';
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                spinner.style.display = 'none';
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
