@@ -1,0 +1,50 @@
+# Virtual environments
+.venv/
+env/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+build/
+dist/
+wheels/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# Model weights
+*.pt
+*.pth
+*.onnx
+*.tflite
+*.h5
+*.keras
+*.pb
+*.safetensors
+
+# YOLO / training runs
+runs/
+
+# Datasets (too large for git)
+datasets/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*~
+tempCodeRunnerFile.py
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# uv lock file (regenerated from pyproject.toml)
+uv.lock
+
+# Claude
+.claude/
