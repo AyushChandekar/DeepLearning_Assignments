@@ -9,17 +9,19 @@ import io
 import base64
 import torch
 from flask import Flask, request, render_template, jsonify
+from flask_cors import CORS
 from PIL import Image
 from ultralytics import YOLO
 
 app = Flask(__name__)
+CORS(app)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNS_DIR = os.path.join(BASE_DIR, "runs")
 
 # Model paths — adjust if your run folders have different names (e.g. detect2, classify3)
 MODEL_PATHS = {
-    "detection": os.path.join(RUNS_DIR, "detect", "weights", "best.pt"),
+    "detection": os.path.join(RUNS_DIR, "detect2", "weights", "best.pt"),
     "classification": os.path.join(RUNS_DIR, "classify", "weights", "best.pt"),
     "pose": os.path.join(RUNS_DIR, "pose", "weights", "best.pt"),
     "obb": os.path.join(RUNS_DIR, "obb", "weights", "best.pt"),
