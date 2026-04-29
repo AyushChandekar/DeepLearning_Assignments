@@ -13,10 +13,15 @@ from flask_cors import CORS
 from PIL import Image
 from ultralytics import YOLO
 
-app = Flask(__name__)
-CORS(app)
-
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FRONTEND_DIR = os.path.join(BASE_DIR, "frontend", "dist")
+
+app = Flask(
+    __name__,
+    static_folder=FRONTEND_DIR,
+    static_url_path="",
+)
+CORS(app)
 RUNS_DIR = os.path.join(BASE_DIR, "runs")
 
 # Model paths — adjust if your run folders have different names (e.g. detect2, classify3)
@@ -44,8 +49,7 @@ def get_model(task):
 
 @app.route("/")
 def index():
-    available = {task: os.path.exists(path) for task, path in MODEL_PATHS.items()}
-    return render_template("index.html", available=available)
+    return app.send_static_file("index.html")
 
 
 @app.route("/predict", methods=["POST"])
@@ -111,4 +115,5 @@ if __name__ == "__main__":
     print("Multi-Task YOLO Vision System — Deployment")
     print("Running on http://localhost:5000")
     print("=" * 60)
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)

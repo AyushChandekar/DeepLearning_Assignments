@@ -1,0 +1,17 @@
+node_modules
+frontend/node_modules
+frontend/dist
+.venv
+__pycache__
+datasets
+*.pyc
+.git
+.gitignore
+.claude
+runs/*/events.*
+runs/*/labels.jpg
+runs/*/train_batch*
+runs/*/val_batch*
+runs/*/confusion*
+runs/*/results.*
+runs/*/args.yaml
